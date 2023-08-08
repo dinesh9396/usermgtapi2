@@ -89,7 +89,7 @@ def login_user():
         return jsonify({'message': 'Invalid credentials'}), 401
 
     # Define your actual secret key here
-    secret_key = 'Welcome'
+    secret_key = os.environ.get('SECRET_KEY')
 
     token = generate_token(user, secret_key)
     return jsonify({'message': 'Login successful', 'token': token}), 200
