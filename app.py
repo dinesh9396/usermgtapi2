@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
+from flask_cors import CORS
 from dotenv import load_dotenv
 from pymongo import ReturnDocument
 import bcrypt
@@ -9,9 +10,11 @@ import os
 
 load_dotenv()
 app = Flask(__name__)
+CORS(app)
 # Replace with your MongoDB URI
 app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
 mongo = PyMongo(app)
+secret_key = os.environ.get('SECRET_KEY')
 
 
 def generate_token(user, secret_key, hours_to_expire=1):
@@ -26,7 +29,7 @@ def generate_token(user, secret_key, hours_to_expire=1):
         'license': user['license'],
         'diaryblogAccess': user.get('diaryblogAccess'),
         'typeitAccess': user.get('typeitAccess'),
-        'expiration_time': expiration_time.strftime('%Y-%m-%d %H:%M:%S')  # Convert to string
+        'exp': expiration_time  # Use 'exp' claim for expiration
     }
 
     token = jwt.encode(payload, secret_key, algorithm='HS256')
