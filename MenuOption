@@ -1,0 +1,81 @@
+from flask import Flask, request, jsonify
+import jwt
+from datetime import datetime, timedelta
+
+app = Flask(__name__)
+
+# Replace 'your_secret_key_here' with your actual secret key used to sign the JWT tokens
+secret_key = 'your_secret_key_here'
+token_expiry_duration = timedelta(hours=1)  # Adjust the duration as needed
+
+
+# Function to decode the JWT token and extract user data
+def decode_jwt_token(token):
+    try:
+        decoded_payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+        return decoded_payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+
+# Function to get the response_data from the decoded user data
+def get_response_data(token):
+    decoded_data = decode_jwt_token(token)
+
+    if decoded_data:
+        # Extract the required user data
+        username = decoded_data.get('username')
+        license = decoded_data.get('license')
+        diaryblogAccess = decoded_data.get('diaryblogAccess')
+        typeitAccess = decoded_data.get('typeitAccess')
+
+        # Extract the expiration time and convert to string
+        expiration_timestamp = decoded_data.get('exp')
+        expiration_time = datetime.utcfromtimestamp(expiration_timestamp)
+
+        # Prepare the response data
+        response_data = {
+            'Username': username,
+            'License': license,
+            'DiaryblogAccess': diaryblogAccess,
+            'TypeitAccess': typeitAccess,
+            'ExpirationTime': expiration_time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        return response_data
+    else:
+        return None
+
+
+# API endpoint to handle POST requests to /MenuOption
+@app.route('/MenuOption', methods=['POST'])
+def menu_option():
+    # Get the token from the 'Authorization' header
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify(message='Invalid token'), 401
+
+    token = auth_header.split(' ')[1]
+
+    # Validate the token expiration
+    decoded_token = decode_jwt_token(token)
+    if not decoded_token or 'exp' not in decoded_token:
+        return jsonify(message='Invalid or expired token'), 401
+
+    expiration_timestamp = decoded_token['exp']
+    current_timestamp = datetime.utcnow().timestamp()
+    if current_timestamp > expiration_timestamp:
+        return jsonify(message='Token has expired'), 401
+
+    # Get the response_data using the get_response_data function
+    response_data = get_response_data(token)
+
+    if response_data:
+        return jsonify(response_data), 200
+    else:
+        return jsonify(message='Invalid token'), 401
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
