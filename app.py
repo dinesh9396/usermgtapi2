@@ -3,6 +3,8 @@ from flask_pymongo import PyMongo
 from flask_cors import CORS
 from dotenv import load_dotenv
 from pymongo import ReturnDocument
+from bson import json_util
+from flask import Response
 import bcrypt
 import jwt
 import datetime
@@ -68,7 +70,7 @@ def register_user():
 
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-    user_id = mongo.db.users.insert_one({
+    user = mongo.db.users.insert_one({
         'name': name,
         'email': email,
         'password': hashed_password,
@@ -76,9 +78,18 @@ def register_user():
         'license': license,
         'diaryblogAccess': diaryblog_access,
         'typeitAccess': typeit_access,
-    }).inserted_id
+    })
 
-    return jsonify({'message': 'User registered successfully', 'user_id': str(user_id)}), 201
+    user_id = user.inserted_id
+
+    user_data = mongo.db.users.find_one({'_id': user_id})
+
+    secret_key = os.environ.get('SECRET_KEY')
+
+    token = generate_token(user_data, secret_key)
+
+    data = json_util.dumps({'message': 'User registered successfully', 'user_id': str(user_id), 'token': token, 'user': user_data})
+    return Response(data, mimetype='application/json'), 201
 
 @app.route('/api/login', methods=['POST'])
 def login_user():
@@ -95,7 +106,9 @@ def login_user():
     secret_key = os.environ.get('SECRET_KEY')
 
     token = generate_token(user, secret_key)
-    return jsonify({'message': 'Login successful', 'token': token}), 200
+    data = json_util.dumps({'message': 'Login successful', 'token': token, 'user': user})
+    return Response(data, mimetype='application/json'), 200
+
 
 
 
