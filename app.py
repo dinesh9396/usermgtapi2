@@ -32,6 +32,7 @@ def generate_token(user, secret_key, hours_to_expire=1):
         'exp': expiration_time  # Use 'exp' claim for expiration
     }
 
+    import jwt
     token = jwt.encode(payload, secret_key, algorithm='HS256')
     return token
 
